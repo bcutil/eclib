@@ -8,7 +8,7 @@ package schnorr
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/bcutil/eclib"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -18,9 +18,9 @@ const (
 )
 
 // ParsePubKey parses a public key for a koblitz curve from a bytestring into a
-// btcec.Publickey, verifying that it is valid. It only supports public keys in
+// eclib.Publickey, verifying that it is valid. It only supports public keys in
 // the BIP-340 32-byte format.
-func ParsePubKey(pubKeyStr []byte) (*btcec.PublicKey, error) {
+func ParsePubKey(pubKeyStr []byte) (*eclib.PublicKey, error) {
 	if pubKeyStr == nil {
 		err := fmt.Errorf("nil pubkey byte string")
 		return nil, err
@@ -33,17 +33,17 @@ func ParsePubKey(pubKeyStr []byte) (*btcec.PublicKey, error) {
 
 	// We'll manually prepend the compressed byte so we can re-use the
 	// existing pubkey parsing routine of the main btcec package.
-	var keyCompressed [btcec.PubKeyBytesLenCompressed]byte
+	var keyCompressed [eclib.PubKeyBytesLenCompressed]byte
 	keyCompressed[0] = secp.PubKeyFormatCompressedEven
 	copy(keyCompressed[1:], pubKeyStr)
 
-	return btcec.ParsePubKey(keyCompressed[:])
+	return eclib.ParsePubKey(keyCompressed[:])
 }
 
 // SerializePubKey serializes a public key as specified by BIP 340. Public keys
 // in this format are 32 bytes in length, and are assumed to have an even y
 // coordinate.
-func SerializePubKey(pub *btcec.PublicKey) []byte {
+func SerializePubKey(pub *eclib.PublicKey) []byte {
 	pBytes := pub.SerializeCompressed()
 	return pBytes[1:]
 }

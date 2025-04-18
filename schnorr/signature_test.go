@@ -12,7 +12,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/bcutil/eclib"
 	"github.com/davecgh/go-spew/spew"
 	secp_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ecdsa_schnorr "github.com/decred/dcrd/dcrec/secp256k1/v4/schnorr"
@@ -172,7 +172,7 @@ func TestSchnorrSign(t *testing.T) {
 		}
 
 		d := decodeHex(test.secretKey)
-		privKey, _ := btcec.PrivKeyFromBytes(d)
+		privKey, _ := eclib.PrivKeyFromBytes(d)
 
 		var auxBytes [32]byte
 		aux := decodeHex(test.auxRand)
@@ -266,7 +266,7 @@ func TestSchnorrSignNoMutate(t *testing.T) {
 	// a signature from that w/o modifying the underlying private key.
 	f := func(privBytes, msg [32]byte) bool {
 		privBytesCopy := privBytes
-		privKey, _ := btcec.PrivKeyFromBytes(privBytesCopy[:])
+		privKey, _ := eclib.PrivKeyFromBytes(privBytesCopy[:])
 
 		// Generate a signature for private key with our message.
 		_, err := Sign(privKey, msg[:])
@@ -277,7 +277,7 @@ func TestSchnorrSignNoMutate(t *testing.T) {
 
 		// We should be able to re-derive the private key from raw
 		// bytes and have that match up again.
-		privKeyCopy, _ := btcec.PrivKeyFromBytes(privBytes[:])
+		privKeyCopy, _ := eclib.PrivKeyFromBytes(privBytes[:])
 		if *privKey != *privKeyCopy {
 			t.Logf("private doesn't match: expected %v, got %v",
 				spew.Sdump(privKeyCopy), spew.Sdump(privKey))

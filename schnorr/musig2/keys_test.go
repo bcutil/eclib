@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/eclib/schnorr"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -45,9 +45,9 @@ func TestMusig2KeySort(t *testing.T) {
 	var testCase keySortTestVector
 	require.NoError(t, json.Unmarshal(testVectorBytes, &testCase))
 
-	keys := make([]*btcec.PublicKey, len(testCase.PubKeys))
+	keys := make([]*eclib.PublicKey, len(testCase.PubKeys))
 	for i, keyStr := range testCase.PubKeys {
-		pubKey, err := btcec.ParsePubKey(mustParseHex(keyStr))
+		pubKey, err := eclib.ParsePubKey(mustParseHex(keyStr))
 		require.NoError(t, err)
 
 		keys[i] = pubKey
@@ -55,9 +55,9 @@ func TestMusig2KeySort(t *testing.T) {
 
 	sortedKeys := sortKeys(keys)
 
-	expectedKeys := make([]*btcec.PublicKey, len(testCase.PubKeys))
+	expectedKeys := make([]*eclib.PublicKey, len(testCase.PubKeys))
 	for i, keyStr := range testCase.SortedKeys {
-		pubKey, err := btcec.ParsePubKey(mustParseHex(keyStr))
+		pubKey, err := eclib.ParsePubKey(mustParseHex(keyStr))
 		require.NoError(t, err)
 
 		expectedKeys[i] = pubKey
@@ -98,14 +98,14 @@ type keyAggTestVectors struct {
 }
 
 func keysFromIndices(t *testing.T, indices []int,
-	pubKeys []string) ([]*btcec.PublicKey, error) {
+	pubKeys []string) ([]*eclib.PublicKey, error) {
 
 	t.Helper()
 
-	inputKeys := make([]*btcec.PublicKey, len(indices))
+	inputKeys := make([]*eclib.PublicKey, len(indices))
 	for i, keyIdx := range indices {
 		var err error
-		inputKeys[i], err = btcec.ParsePubKey(
+		inputKeys[i], err = eclib.ParsePubKey(
 			mustParseHex(pubKeys[keyIdx]),
 		)
 		if err != nil {
@@ -337,7 +337,7 @@ func TestMuSig2TweakTestVectors(t *testing.T) {
 	var testCases keyTweakVector
 	require.NoError(t, json.Unmarshal(testVectorBytes, &testCases))
 
-	privKey, _ := btcec.PrivKeyFromBytes(mustParseHex(testCases.PrivKey))
+	privKey, _ := eclib.PrivKeyFromBytes(mustParseHex(testCases.PrivKey))
 
 	var msg [32]byte
 	copy(msg[:], mustParseHex(testCases.Msg))

@@ -1,4 +1,4 @@
-package btcec
+package eclib
 
 import secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 

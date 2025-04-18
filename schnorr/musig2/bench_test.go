@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/eclib/schnorr"
 )
 
 var (
@@ -27,12 +27,12 @@ func hexToBytes(s string) []byte {
 	return b
 }
 
-func hexToModNScalar(s string) *btcec.ModNScalar {
+func hexToModNScalar(s string) *eclib.ModNScalar {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic("invalid hex in source file: " + s)
 	}
-	var scalar btcec.ModNScalar
+	var scalar eclib.ModNScalar
 	if overflow := scalar.SetByteSlice(b); overflow {
 		panic("hex in source file overflows mod N scalar: " + s)
 	}
@@ -40,7 +40,7 @@ func hexToModNScalar(s string) *btcec.ModNScalar {
 }
 
 func genSigner(t *testing.B) signer {
-	privKey, err := btcec.NewPrivateKey()
+	privKey, err := eclib.NewPrivateKey()
 	if err != nil {
 		t.Fatalf("unable to gen priv key: %v", err)
 	}
@@ -213,7 +213,7 @@ func BenchmarkCombineSigs(b *testing.B) {
 		var msg [32]byte
 		copy(msg[:], testMsg[:])
 
-		var finalNonce *btcec.PublicKey
+		var finalNonce *eclib.PublicKey
 		for i := range signers {
 			signer := signers[i]
 			partialSig, err := Sign(
@@ -273,7 +273,7 @@ func BenchmarkAggregateNonces(b *testing.B) {
 	}
 }
 
-var testKey *btcec.PublicKey
+var testKey *eclib.PublicKey
 
 // BenchmarkAggregateKeys benchmarks how long it takes to aggregate public
 // keys.

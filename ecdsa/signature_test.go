@@ -14,7 +14,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/bcutil/eclib"
 )
 
 type signatureTest struct {
@@ -459,7 +459,7 @@ func TestSignatureSerialize(t *testing.T) {
 		},
 		{
 			"zero signature",
-			NewSignature(&btcec.ModNScalar{}, &btcec.ModNScalar{}),
+			NewSignature(&eclib.ModNScalar{}, &eclib.ModNScalar{}),
 			[]byte{0x30, 0x06, 0x02, 0x01, 0x00, 0x02, 0x01, 0x00},
 		},
 	}
@@ -474,9 +474,9 @@ func TestSignatureSerialize(t *testing.T) {
 	}
 }
 
-func testSignCompact(t *testing.T, tag string, curve *btcec.KoblitzCurve,
+func testSignCompact(t *testing.T, tag string, curve *eclib.KoblitzCurve,
 	data []byte, isCompressed bool) {
-	priv, _ := btcec.NewPrivateKey()
+	priv, _ := eclib.NewPrivateKey()
 
 	hashed := []byte("testing")
 	sig := SignCompact(priv, hashed, isCompressed)
@@ -535,7 +535,7 @@ func TestSignCompact(t *testing.T) {
 			continue
 		}
 		compressed := i%2 != 0
-		testSignCompact(t, name, btcec.S256(), data, compressed)
+		testSignCompact(t, name, eclib.S256(), data, compressed)
 	}
 }
 
@@ -632,7 +632,7 @@ func TestRecoverCompact(t *testing.T) {
 		}
 
 		// Otherwise, ensure the correct public key was recovered.
-		exPub, _ := btcec.ParsePubKey(decodeHex(test.pub))
+		exPub, _ := eclib.ParsePubKey(decodeHex(test.pub))
 		if !exPub.IsEqual(pub) {
 			t.Errorf("unexpected recovered public key #%d: "+
 				"want %v, got %v", i, exPub, pub)
@@ -691,11 +691,11 @@ func TestRFC6979(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		privKey, _ := btcec.PrivKeyFromBytes(decodeHex(test.key))
+		privKey, _ := eclib.PrivKeyFromBytes(decodeHex(test.key))
 		hash := sha256.Sum256([]byte(test.msg))
 
 		// Ensure deterministically generated nonce is the expected value.
-		gotNonce := btcec.NonceRFC6979(privKey.Serialize(), hash[:], nil, nil, 0).Bytes()
+		gotNonce := eclib.NonceRFC6979(privKey.Serialize(), hash[:], nil, nil, 0).Bytes()
 		wantNonce := decodeHex(test.nonce)
 		if !bytes.Equal(gotNonce[:], wantNonce) {
 			t.Errorf("NonceRFC6979 #%d (%s): Nonce is incorrect: "+
@@ -739,8 +739,8 @@ func TestSignatureIsEqual(t *testing.T) {
 	}
 }
 
-func testSignAndVerify(t *testing.T, c *btcec.KoblitzCurve, tag string) {
-	priv, _ := btcec.NewPrivateKey()
+func testSignAndVerify(t *testing.T, c *eclib.KoblitzCurve, tag string) {
+	priv, _ := eclib.NewPrivateKey()
 	pub := priv.PubKey()
 
 	hashed := []byte("testing")
@@ -757,7 +757,7 @@ func testSignAndVerify(t *testing.T, c *btcec.KoblitzCurve, tag string) {
 }
 
 func TestSignAndVerify(t *testing.T) {
-	testSignAndVerify(t, btcec.S256(), "S256")
+	testSignAndVerify(t, eclib.S256(), "S256")
 }
 
 func TestPrivKeys(t *testing.T) {
@@ -777,9 +777,9 @@ func TestPrivKeys(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		priv, pub := btcec.PrivKeyFromBytes(test.key)
+		priv, pub := eclib.PrivKeyFromBytes(test.key)
 
-		_, err := btcec.ParsePubKey(pub.SerializeUncompressed())
+		_, err := eclib.ParsePubKey(pub.SerializeUncompressed())
 		if err != nil {
 			t.Errorf("%s privkey: %v", test.name, err)
 			continue

@@ -5,8 +5,8 @@ package schnorr
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/ops"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ecdsa_schnorr "github.com/decred/dcrd/dcrec/secp256k1/v4/schnorr"
 )
@@ -36,12 +36,12 @@ var (
 
 // Signature is a type representing a Schnorr signature.
 type Signature struct {
-	r btcec.FieldVal
-	s btcec.ModNScalar
+	r eclib.FieldVal
+	s eclib.ModNScalar
 }
 
 // NewSignature instantiates a new signature given some r and s values.
-func NewSignature(r *btcec.FieldVal, s *btcec.ModNScalar) *Signature {
+func NewSignature(r *eclib.FieldVal, s *eclib.ModNScalar) *Signature {
 	var sig Signature
 	sig.r.Set(r).Normalize()
 	sig.s.Set(s)
@@ -85,12 +85,12 @@ func ParseSignature(sig []byte) (*Signature, error) {
 	// additional restrictions to ensure r is in the range [0, p-1], and s is in
 	// the range [0, n-1] since valid Schnorr signatures are required to be in
 	// that range per spec.
-	var r btcec.FieldVal
+	var r eclib.FieldVal
 	if overflow := r.SetByteSlice(sig[0:32]); overflow {
 		str := "invalid signature: r >= field prime"
 		return nil, signatureError(ecdsa_schnorr.ErrSigRTooBig, str)
 	}
-	var s btcec.ModNScalar
+	var s eclib.ModNScalar
 	s.SetByteSlice(sig[32:64])
 
 	// Return the signature.
@@ -168,11 +168,11 @@ func schnorrVerify(sig *Signature, hash []byte, pubKeyBytes []byte) error {
 	sig.r.PutBytesUnchecked(rBytes[:])
 	pBytes := SerializePubKey(pubKey)
 
-	commitment := chainhash.TaggedHash(
-		chainhash.TagBIP0340Challenge, rBytes[:], pBytes, hash,
+	commitment := ops.TaggedHash(
+		ops.TagBIP0340Challenge, rBytes[:], pBytes, hash,
 	)
 
-	var e btcec.ModNScalar
+	var e eclib.ModNScalar
 	e.SetBytes((*[32]byte)(commitment))
 
 	// Negate e here so we can use AddNonConst below to subtract the s*G
@@ -182,11 +182,11 @@ func schnorrVerify(sig *Signature, hash []byte, pubKeyBytes []byte) error {
 	// Step 6.
 	//
 	// R = s*G - e*P
-	var P, R, sG, eP btcec.JacobianPoint
+	var P, R, sG, eP eclib.JacobianPoint
 	pubKey.AsJacobian(&P)
-	btcec.ScalarBaseMultNonConst(&sig.s, &sG)
-	btcec.ScalarMultNonConst(&e, &P, &eP)
-	btcec.AddNonConst(&sG, &eP, &R)
+	eclib.ScalarBaseMultNonConst(&sig.s, &sG)
+	eclib.ScalarMultNonConst(&e, &P, &eP)
+	eclib.AddNonConst(&sG, &eP, &R)
 
 	// Step 7.
 	//
@@ -225,7 +225,7 @@ func schnorrVerify(sig *Signature, hash []byte, pubKeyBytes []byte) error {
 
 // Verify returns whether or not the signature is valid for the provided hash
 // and secp256k1 public key.
-func (sig *Signature) Verify(hash []byte, pubKey *btcec.PublicKey) bool {
+func (sig *Signature) Verify(hash []byte, pubKey *eclib.PublicKey) bool {
 	pubkeyBytes := SerializePubKey(pubKey)
 	return schnorrVerify(sig, hash, pubkeyBytes) == nil
 }
@@ -245,7 +245,7 @@ func zeroArray(a *[scalarSize]byte) {
 // WARNING: The hash MUST be 32 bytes and both the nonce and private keys must
 // NOT be 0.  Since this is an internal use function, these preconditions MUST
 // be satisfied by the caller.
-func schnorrSign(privKey, nonce *btcec.ModNScalar, pubKey *btcec.PublicKey, hash []byte,
+func schnorrSign(privKey, nonce *eclib.ModNScalar, pubKey *eclib.PublicKey, hash []byte,
 	opts *signOptions) (*Signature, error) {
 
 	// The algorithm for producing a BIP-340 signature is described in
@@ -285,9 +285,9 @@ func schnorrSign(privKey, nonce *btcec.ModNScalar, pubKey *btcec.PublicKey, hash
 	// Step 10.
 	//
 	// R = kG
-	var R btcec.JacobianPoint
+	var R eclib.JacobianPoint
 	k := *nonce
-	btcec.ScalarBaseMultNonConst(&k, &R)
+	eclib.ScalarBaseMultNonConst(&k, &R)
 
 	// Step 11.
 	//
@@ -303,11 +303,11 @@ func schnorrSign(privKey, nonce *btcec.ModNScalar, pubKey *btcec.PublicKey, hash
 	//
 	// e = tagged_hash("BIP0340/challenge", bytes(R) || bytes(P) || m) mod n
 	pBytes := SerializePubKey(pubKey)
-	commitment := chainhash.TaggedHash(
-		chainhash.TagBIP0340Challenge, R.X.Bytes()[:], pBytes, hash,
+	commitment := ops.TaggedHash(
+		ops.TagBIP0340Challenge, R.X.Bytes()[:], pBytes, hash,
 	)
 
-	var e btcec.ModNScalar
+	var e eclib.ModNScalar
 	if overflow := e.SetBytes((*[32]byte)(commitment)); overflow != 0 {
 		k.Zero()
 		str := "hash of (r || P || m) too big"
@@ -317,7 +317,7 @@ func schnorrSign(privKey, nonce *btcec.ModNScalar, pubKey *btcec.PublicKey, hash
 	// Step 13.
 	//
 	// s = k + e*d mod n
-	s := new(btcec.ModNScalar).Mul2(&e, privKey).Add(&k)
+	s := new(eclib.ModNScalar).Mul2(&e, privKey).Add(&k)
 	k.Zero()
 
 	sig := NewSignature(&R.X, s)
@@ -388,7 +388,7 @@ func CustomNonce(auxData [32]byte) SignOption {
 // which can expose the signer to constant time attacks.  As a result, this
 // function should not be used in situations where there is the possibility of
 // someone having EM field/cache/etc access.
-func Sign(privKey *btcec.PrivateKey, hash []byte,
+func Sign(privKey *eclib.PrivateKey, hash []byte,
 	signOpts ...SignOption) (*Signature, error) {
 
 	// First, parse the set of optional signing options.
@@ -431,7 +431,7 @@ func Sign(privKey *btcec.PrivateKey, hash []byte,
 	// Step 1.
 	//
 	// d' = int(d)
-	var privKeyScalar btcec.ModNScalar
+	var privKeyScalar eclib.ModNScalar
 	privKeyScalar.Set(&privKey.Key)
 
 	// Step 2.
@@ -472,8 +472,8 @@ func Sign(privKey *btcec.PrivateKey, hash []byte,
 		//
 		// t = bytes(d) xor tagged_hash("BIP0340/aux", a)
 		privBytes := privKeyScalar.Bytes()
-		t := chainhash.TaggedHash(
-			chainhash.TagBIP0340Aux, (*opts.authNonce)[:],
+		t := ops.TaggedHash(
+			ops.TagBIP0340Aux, (*opts.authNonce)[:],
 		)
 		for i := 0; i < len(t); i++ {
 			t[i] ^= privBytes[i]
@@ -485,14 +485,14 @@ func Sign(privKey *btcec.PrivateKey, hash []byte,
 		//
 		// We snip off the first byte of the serialized pubkey, as we
 		// only need the x coordinate and not the market byte.
-		rand := chainhash.TaggedHash(
-			chainhash.TagBIP0340Nonce, t[:], pubKeyBytes[1:], hash,
+		rand := ops.TaggedHash(
+			ops.TagBIP0340Nonce, t[:], pubKeyBytes[1:], hash,
 		)
 
 		// Step 8.
 		//
 		// k'= int(rand) mod n
-		var kPrime btcec.ModNScalar
+		var kPrime eclib.ModNScalar
 		kPrime.SetBytes((*[32]byte)(rand))
 
 		// Step 9.
@@ -521,7 +521,7 @@ func Sign(privKey *btcec.PrivateKey, hash []byte,
 		// Use RFC6979 to generate a deterministic nonce k in [1, n-1]
 		// parameterized by the private key, message being signed, extra data
 		// that identifies the scheme, and an iteration count
-		k := btcec.NonceRFC6979(
+		k := eclib.NonceRFC6979(
 			privKeyBytes[:], hash, rfc6979ExtraDataV0[:], nil, iteration,
 		)
 

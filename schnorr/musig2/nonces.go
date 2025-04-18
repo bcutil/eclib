@@ -9,9 +9,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/eclib/schnorr"
+	"github.com/bcutil/ops"
 )
 
 const (
@@ -61,20 +61,20 @@ type Nonces struct {
 // secNonceToPubNonce takes our two secrete nonces, and produces their two
 // corresponding EC points, serialized in compressed format.
 func secNonceToPubNonce(secNonce [SecNonceSize]byte) [PubNonceSize]byte {
-	var k1Mod, k2Mod btcec.ModNScalar
-	k1Mod.SetByteSlice(secNonce[:btcec.PrivKeyBytesLen])
-	k2Mod.SetByteSlice(secNonce[btcec.PrivKeyBytesLen:])
+	var k1Mod, k2Mod eclib.ModNScalar
+	k1Mod.SetByteSlice(secNonce[:eclib.PrivKeyBytesLen])
+	k2Mod.SetByteSlice(secNonce[eclib.PrivKeyBytesLen:])
 
-	var r1, r2 btcec.JacobianPoint
-	btcec.ScalarBaseMultNonConst(&k1Mod, &r1)
-	btcec.ScalarBaseMultNonConst(&k2Mod, &r2)
+	var r1, r2 eclib.JacobianPoint
+	eclib.ScalarBaseMultNonConst(&k1Mod, &r1)
+	eclib.ScalarBaseMultNonConst(&k2Mod, &r2)
 
 	// Next, we'll convert the key in jacobian format to a normal public
 	// key expressed in affine coordinates.
 	r1.ToAffine()
 	r2.ToAffine()
-	r1Pub := btcec.NewPublicKey(&r1.X, &r1.Y)
-	r2Pub := btcec.NewPublicKey(&r2.X, &r2.Y)
+	r1Pub := eclib.NewPublicKey(&r1.X, &r1.Y)
+	r2Pub := eclib.NewPublicKey(&r2.X, &r2.Y)
 
 	var pubNonce [PubNonceSize]byte
 
@@ -82,7 +82,7 @@ func secNonceToPubNonce(secNonce [SecNonceSize]byte) [PubNonceSize]byte {
 	// serialized in compressed format.
 	copy(pubNonce[:], r1Pub.SerializeCompressed())
 	copy(
-		pubNonce[btcec.PubKeyBytesLenCompressed:],
+		pubNonce[eclib.PubKeyBytesLenCompressed:],
 		r2Pub.SerializeCompressed(),
 	)
 
@@ -153,7 +153,7 @@ func WithCustomRand(r io.Reader) NonceGenOption {
 
 // WithPublicKey is the mandatory public key that will be mixed into the nonce
 // generation.
-func WithPublicKey(pubKey *btcec.PublicKey) NonceGenOption {
+func WithPublicKey(pubKey *eclib.PublicKey) NonceGenOption {
 	return func(o *nonceGenOpts) {
 		o.publicKey = pubKey.SerializeCompressed()
 	}
@@ -161,7 +161,7 @@ func WithPublicKey(pubKey *btcec.PublicKey) NonceGenOption {
 
 // WithNonceSecretKeyAux allows a caller to optionally specify a secret key
 // that should be used to augment the randomness used to generate the nonces.
-func WithNonceSecretKeyAux(secKey *btcec.PrivateKey) NonceGenOption {
+func WithNonceSecretKeyAux(secKey *eclib.PrivateKey) NonceGenOption {
 	return func(o *nonceGenOpts) {
 		o.secretKey = secKey.Serialize()
 	}
@@ -170,7 +170,7 @@ func WithNonceSecretKeyAux(secKey *btcec.PrivateKey) NonceGenOption {
 // WithNonceCombinedKeyAux allows a caller to optionally specify the combined
 // key used in this signing session to further augment the randomness used to
 // generate nonces.
-func WithNonceCombinedKeyAux(combinedKey *btcec.PublicKey) NonceGenOption {
+func WithNonceCombinedKeyAux(combinedKey *eclib.PublicKey) NonceGenOption {
 	return func(o *nonceGenOpts) {
 		o.combinedKey = schnorr.SerializePubKey(combinedKey)
 	}
@@ -194,7 +194,7 @@ func WithNonceAuxInput(aux []byte) NonceGenOption {
 
 // withCustomOptions allows a caller to pass a complete set of custom
 // nonceGenOpts, without needing to create custom and checked structs such as
-// *btcec.PrivateKey. This is mainly used to match the testcases provided by
+// *eclib.PrivateKey. This is mainly used to match the testcases provided by
 // the MuSig2 BIP.
 func withCustomOptions(customOpts nonceGenOpts) NonceGenOption {
 	return func(o *nonceGenOpts) {
@@ -258,7 +258,7 @@ func writeBytesPrefix(w io.Writer, b []byte, lenWriter lengthWriter) error {
 //   - bytes(1, 0) if the message is blank
 //   - bytes(1, 1) || bytes(8, len(m)) || m if the message is present.
 func genNonceAuxBytes(rand []byte, pubkey []byte, i int,
-	opts *nonceGenOpts) (*chainhash.Hash, error) {
+	opts *nonceGenOpts) (*ops.Hash, error) {
 
 	var w bytes.Buffer
 
@@ -318,7 +318,7 @@ func genNonceAuxBytes(rand []byte, pubkey []byte, i int,
 
 	// With the message buffer complete, we'll now derive the tagged hash
 	// using our set of params.
-	return chainhash.TaggedHash(NonceGenTag, w.Bytes()), nil
+	return ops.TaggedHash(NonceGenTag, w.Bytes()), nil
 }
 
 // GenNonces generates the secret nonces, as well as the public nonces which
@@ -344,9 +344,9 @@ func GenNonces(options ...NonceGenOption) (*Nonces, error) {
 	// If the options contain a secret key, we XOR it with with the tagged
 	// random bytes.
 	if len(opts.secretKey) == 32 {
-		taggedHash := chainhash.TaggedHash(NonceAuxTag, randBytes[:])
+		taggedHash := ops.TaggedHash(NonceAuxTag, randBytes[:])
 
-		for i := 0; i < chainhash.HashSize; i++ {
+		for i := 0; i < ops.HashSize; i++ {
 			randBytes[i] = opts.secretKey[i] ^ taggedHash[i]
 		}
 	}
@@ -362,7 +362,7 @@ func GenNonces(options ...NonceGenOption) (*Nonces, error) {
 		return nil, err
 	}
 
-	var k1Mod, k2Mod btcec.ModNScalar
+	var k1Mod, k2Mod eclib.ModNScalar
 	k1Mod.SetBytes((*[32]byte)(k1))
 	k2Mod.SetBytes((*[32]byte)(k2))
 
@@ -370,8 +370,8 @@ func GenNonces(options ...NonceGenOption) (*Nonces, error) {
 	// byte secret nonce values and the pubkey.
 	var nonces Nonces
 	k1Mod.PutBytesUnchecked(nonces.SecNonce[:])
-	k2Mod.PutBytesUnchecked(nonces.SecNonce[btcec.PrivKeyBytesLen:])
-	copy(nonces.SecNonce[btcec.PrivKeyBytesLen*2:], opts.publicKey)
+	k2Mod.PutBytesUnchecked(nonces.SecNonce[eclib.PrivKeyBytesLen:])
+	copy(nonces.SecNonce[eclib.PrivKeyBytesLen*2:], opts.publicKey)
 
 	// Next, we'll generate R_1 = k_1*G and R_2 = k_2*G. Along the way we
 	// need to map our nonce values into mod n scalars so we can work with
@@ -389,18 +389,18 @@ func AggregateNonces(pubNonces [][PubNonceSize]byte) ([PubNonceSize]byte, error)
 	// function to extra 33 bytes at a time from the packed 2x public
 	// nonces.
 	type nonceSlicer func([PubNonceSize]byte) []byte
-	combineNonces := func(slicer nonceSlicer) (btcec.JacobianPoint, error) {
+	combineNonces := func(slicer nonceSlicer) (eclib.JacobianPoint, error) {
 		// Convert the set of nonces into jacobian coordinates we can
 		// use to accumulate them all into each other.
-		pubNonceJs := make([]*btcec.JacobianPoint, len(pubNonces))
+		pubNonceJs := make([]*eclib.JacobianPoint, len(pubNonces))
 		for i, pubNonceBytes := range pubNonces {
 			// Using the slicer, extract just the bytes we need to
 			// decode.
-			var nonceJ btcec.JacobianPoint
+			var nonceJ eclib.JacobianPoint
 
-			nonceJ, err := btcec.ParseJacobian(slicer(pubNonceBytes))
+			nonceJ, err := eclib.ParseJacobian(slicer(pubNonceBytes))
 			if err != nil {
-				return btcec.JacobianPoint{}, err
+				return eclib.JacobianPoint{}, err
 			}
 
 			pubNonceJs[i] = &nonceJ
@@ -408,9 +408,9 @@ func AggregateNonces(pubNonces [][PubNonceSize]byte) ([PubNonceSize]byte, error)
 
 		// Now that we have the set of complete nonces, we'll aggregate
 		// them: R = R_i + R_i+1 + ... + R_i+n.
-		var aggregateNonce btcec.JacobianPoint
+		var aggregateNonce eclib.JacobianPoint
 		for _, pubNonceJ := range pubNonceJs {
-			btcec.AddNonConst(
+			eclib.AddNonConst(
 				&aggregateNonce, pubNonceJ, &aggregateNonce,
 			)
 		}
@@ -424,23 +424,23 @@ func AggregateNonces(pubNonces [][PubNonceSize]byte) ([PubNonceSize]byte, error)
 	// aggregates the second nonce of all the parties.
 	var finalNonce [PubNonceSize]byte
 	combinedNonce1, err := combineNonces(func(n [PubNonceSize]byte) []byte {
-		return n[:btcec.PubKeyBytesLenCompressed]
+		return n[:eclib.PubKeyBytesLenCompressed]
 	})
 	if err != nil {
 		return finalNonce, err
 	}
 
 	combinedNonce2, err := combineNonces(func(n [PubNonceSize]byte) []byte {
-		return n[btcec.PubKeyBytesLenCompressed:]
+		return n[eclib.PubKeyBytesLenCompressed:]
 	})
 	if err != nil {
 		return finalNonce, err
 	}
 
-	copy(finalNonce[:], btcec.JacobianToByteSlice(combinedNonce1))
+	copy(finalNonce[:], eclib.JacobianToByteSlice(combinedNonce1))
 	copy(
-		finalNonce[btcec.PubKeyBytesLenCompressed:],
-		btcec.JacobianToByteSlice(combinedNonce2),
+		finalNonce[eclib.PubKeyBytesLenCompressed:],
+		eclib.JacobianToByteSlice(combinedNonce2),
 	)
 
 	return finalNonce, nil

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/bcutil/eclib"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -112,7 +112,7 @@ func TestMusig2SignVerify(t *testing.T) {
 	var testCases signVerifyTestVectors
 	require.NoError(t, json.Unmarshal(testVectorBytes, &testCases))
 
-	privKey, _ := btcec.PrivKeyFromBytes(mustParseHex(testCases.PrivKey))
+	privKey, _ := eclib.PrivKeyFromBytes(mustParseHex(testCases.PrivKey))
 
 	for i, testCase := range testCases.ValidCases {
 		testCase := testCase
@@ -375,7 +375,7 @@ func TestMusig2SignCombine(t *testing.T) {
 			)
 
 			finalNonceJ.ToAffine()
-			finalNonce := btcec.NewPublicKey(
+			finalNonce := eclib.NewPublicKey(
 				&finalNonceJ.X, &finalNonceJ.Y,
 			)
 

@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/bcutil/eclib"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -31,12 +31,12 @@ func hexToBytes(s string) []byte {
 // panic if there is an error.  This is only provided for the hard-coded
 // constants so errors in the source code can be detected. It will only (and
 // must only) be called with hard-coded values.
-func hexToModNScalar(s string) *btcec.ModNScalar {
+func hexToModNScalar(s string) *eclib.ModNScalar {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic("invalid hex in source file: " + s)
 	}
-	var scalar btcec.ModNScalar
+	var scalar eclib.ModNScalar
 	if overflow := scalar.SetByteSlice(b); overflow {
 		panic("hex in source file overflows mod N scalar: " + s)
 	}
@@ -47,12 +47,12 @@ func hexToModNScalar(s string) *btcec.ModNScalar {
 // if there is an error.  This is only provided for the hard-coded constants so
 // errors in the source code can be detected. It will only (and must only) be
 // called with hard-coded values.
-func hexToFieldVal(s string) *btcec.FieldVal {
+func hexToFieldVal(s string) *eclib.FieldVal {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic("invalid hex in source file: " + s)
 	}
-	var f btcec.FieldVal
+	var f eclib.FieldVal
 	if overflow := f.SetByteSlice(b); overflow {
 		panic("hex in source file overflows mod P: " + s)
 	}

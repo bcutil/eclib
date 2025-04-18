@@ -2,7 +2,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package btcec
+package eclib
 
 import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"

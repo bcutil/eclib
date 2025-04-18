@@ -5,8 +5,8 @@ package musig2
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/eclib/schnorr"
 )
 
 var (
@@ -65,10 +65,10 @@ var (
 // like securely generating secret nonces, aggregating keys and nonces, etc.
 type Context struct {
 	// signingKey is the key we'll use for signing.
-	signingKey *btcec.PrivateKey
+	signingKey *eclib.PrivateKey
 
 	// pubKey is our even-y coordinate public  key.
-	pubKey *btcec.PublicKey
+	pubKey *eclib.PublicKey
 
 	// combinedKey is the aggregated public key.
 	combinedKey *AggregateKey
@@ -117,7 +117,7 @@ type contextOptions struct {
 	bip86Tweak bool
 
 	// keySet is the complete set of signers for this context.
-	keySet []*btcec.PublicKey
+	keySet []*eclib.PublicKey
 
 	// numSigners is the total number of signers that will eventually be a
 	// part of the context.
@@ -163,7 +163,7 @@ func WithBip86TweakCtx() ContextOption {
 
 // WithKnownSigners is an optional parameter that should be used if a session
 // can be created as soon as all the singers are known.
-func WithKnownSigners(signers []*btcec.PublicKey) ContextOption {
+func WithKnownSigners(signers []*eclib.PublicKey) ContextOption {
 	return func(o *contextOptions) {
 		o.keySet = signers
 		o.numSigners = len(signers)
@@ -197,7 +197,7 @@ func WithEarlyNonceGen() ContextOption {
 // of public keys for each of the other signers.
 //
 // NOTE: This struct should be used over the raw Sign API whenever possible.
-func NewContext(signingKey *btcec.PrivateKey, shouldSort bool,
+func NewContext(signingKey *eclib.PrivateKey, shouldSort bool,
 	ctxOpts ...ContextOption) (*Context, error) {
 
 	// First, parse the set of optional context options.
@@ -231,7 +231,7 @@ func NewContext(signingKey *btcec.PrivateKey, shouldSort bool,
 		// Otherwise, we'll add ourselves as the only known signer, and
 		// await further calls to RegisterSigner before a session can
 		// be created.
-		opts.keySet = make([]*btcec.PublicKey, 0, opts.numSigners)
+		opts.keySet = make([]*eclib.PublicKey, 0, opts.numSigners)
 		opts.keySet = append(opts.keySet, pubKey)
 
 	default:
@@ -326,7 +326,7 @@ func (c *Context) EarlySessionNonce() (*Nonces, error) {
 //
 // NOTE: If the set of keys are not to be sorted during signing, then the
 // ordering each key is registered with MUST match the desired ordering.
-func (c *Context) RegisterSigner(pub *btcec.PublicKey) (bool, error) {
+func (c *Context) RegisterSigner(pub *eclib.PublicKey) (bool, error) {
 	haveAllSigners := len(c.opts.keySet) == c.opts.numSigners
 	if haveAllSigners {
 		return false, ErrAlreadyHaveAllSigners
@@ -353,7 +353,7 @@ func (c *Context) NumRegisteredSigners() int {
 
 // CombinedKey returns the combined public key that will be used to generate
 // multi-signatures  against.
-func (c *Context) CombinedKey() (*btcec.PublicKey, error) {
+func (c *Context) CombinedKey() (*eclib.PublicKey, error) {
 	// If the caller hasn't registered all the signers at this point, then
 	// the combined key won't be available.
 	if c.combinedKey == nil {
@@ -364,13 +364,13 @@ func (c *Context) CombinedKey() (*btcec.PublicKey, error) {
 }
 
 // PubKey returns the public key of the signer of this session.
-func (c *Context) PubKey() btcec.PublicKey {
+func (c *Context) PubKey() eclib.PublicKey {
 	return *c.pubKey
 }
 
 // SigningKeys returns the set of keys used for signing.
-func (c *Context) SigningKeys() []*btcec.PublicKey {
-	keys := make([]*btcec.PublicKey, len(c.opts.keySet))
+func (c *Context) SigningKeys() []*eclib.PublicKey {
+	keys := make([]*eclib.PublicKey, len(c.opts.keySet))
 	copy(keys, c.opts.keySet)
 
 	return keys
@@ -381,7 +381,7 @@ func (c *Context) SigningKeys() []*btcec.PublicKey {
 // CombinedKey() will return the fully tweaked output key, with this method
 // returning the internal key. If a taproot tweak wasn't specified, then this
 // method will return an error.
-func (c *Context) TaprootInternalKey() (*btcec.PublicKey, error) {
+func (c *Context) TaprootInternalKey() (*eclib.PublicKey, error) {
 	// If the caller hasn't registered all the signers at this point, then
 	// the combined key won't be available.
 	if c.combinedKey == nil {

@@ -8,9 +8,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/bcutil/eclib"
+	"github.com/bcutil/eclib/ecdsa"
+	"github.com/bcutil/ops"
 )
 
 // This example demonstrates signing a message with a secp256k1 private key that
@@ -23,11 +23,11 @@ func Example_signMessage() {
 		fmt.Println(err)
 		return
 	}
-	privKey, pubKey := btcec.PrivKeyFromBytes(pkBytes)
+	privKey, pubKey := eclib.PrivKeyFromBytes(pkBytes)
 
 	// Sign a message using the private key.
 	message := "test message"
-	messageHash := chainhash.DoubleHashB([]byte(message))
+	messageHash := ops.DoubleHashB([]byte(message))
 	signature := ecdsa.Sign(privKey, messageHash)
 
 	// Serialize and display the signature.
@@ -53,7 +53,7 @@ func Example_verifySignature() {
 		fmt.Println(err)
 		return
 	}
-	pubKey, err := btcec.ParsePubKey(pubKeyBytes)
+	pubKey, err := eclib.ParsePubKey(pubKeyBytes)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -76,7 +76,7 @@ func Example_verifySignature() {
 
 	// Verify the signature for the message using the public key.
 	message := "test message"
-	messageHash := chainhash.DoubleHashB([]byte(message))
+	messageHash := ops.DoubleHashB([]byte(message))
 	verified := signature.Verify(messageHash, pubKey)
 	fmt.Println("Signature Verified?", verified)
 
